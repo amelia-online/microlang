@@ -1,0 +1,27 @@
+Microlang Specification
+
+Numbers (signed and unsigned):
+
+int: 0 1 2 3 4 5 6 7 8 9 ... etc
+float: 0.0 ...
+hex: 0xFF 0x<0-F>...
+
+Strings:
+
+`Strings look like this'
+Escapes: \n \t \' \` (for now)
+
+If statement (?):
+
+1 < 2 ? 
+| `yes'
+| `no'
+end
+
+Operators:
++, -, %, *, /, **
+
+Bitwise:
+&, |, !
+
+
