@@ -1,4 +1,5 @@
 use std::io::{Read, Write};
+use std::env::Args;
 
 
 #[derive(Debug)]
@@ -38,25 +39,84 @@ impl Token {
 }
 
 pub struct Lexer {
-	pub input: String,
-	pub index: i32,
-	pub line: i32
+	pub input: Vec<char>,
+	pub index: usize,
+	pub line: i32,
+	pub digits: String,
+
 }	
 
 impl Lexer {
 	pub fn new(input: String) -> Self {
 		Self {
-			input,
+			input: input.chars().collect::<Vec<char>>(),
 			index: 0,
-			line: 0,
+			line: 1,
+			digits: String::from("0123456789"),
 		}
 	} 
+
+	pub fn inc(&mut self) {
+		self.index += 1;
+	}
+
+	pub fn now(&self) -> i32 {
+		self.index as i32
+	}
+
+	pub fn get(&self) -> char {
+		self.input[self.index]
+	}
+
+	pub fn get_at(&self, idx: usize) -> Result<char, ()> {
+		if idx < self.input.len()-1 {
+			Ok(self.input[idx])
+		} else {
+			Err(())
+		}
+	}
+
+	pub fn lex_number(&mut self) -> Token {
+		let start = self.now();
+		let mut number = String::new();
+
+		while self.digits.contains(self.get()) && self.index < self.input.len() {
+			number.push(self.get());
+			self.inc();
+		}
+
+		Token::new(TokenType::Number(number),self.line, start, self.now())
+	}
+
+	pub fn lex(&mut self) -> Vec<Token> {
+		use TokenType::*;
+		let length = self.input.len();
+		
+		let mut result: Vec<Token> = Vec::new();
+		while self.index < length {
+			let ch = self.input[self.index];
+
+			if ch == ' ' {
+				self.inc();
+				continue;
+			}
+
+			if ch == '\n' {
+				result.push(Token::new(Newline, self.line, self.now(), self.now() + 1));
+				self.inc();
+				self.line += 1;
+			} else if self.digits.contains(ch) {
+				result.push(self.lex_number());
+			} 
+		}
+		result
+	}
 }
 
 pub fn read_file(path: String) -> Result<String, ()> {
 	if let Ok(mut file) = std::fs::File::open(path) {
 		let mut buf = String::new();
-		file.read_to_string(&mut buf).expect("");
+		file.read_to_string(&mut buf).expect("Failed to read file.");
 		Ok(buf)
 	} else {
 		Err(())
@@ -64,6 +124,16 @@ pub fn read_file(path: String) -> Result<String, ()> {
 }
 
 fn main() {
-    println!("{:?}", Token::new(TokenType::Newline, 0, 0, 0));
+	let args = std::env::args().collect::<Vec<String>>();
+	let path = &args[1];
+	if let Ok(txt) = read_file(path.to_owned()) {
+		let mut lexer = Lexer::new(txt);
+		let tokens = lexer.lex();
+		for token in tokens {
+			println!("{:?}", token);
+		}
+	} else {
+		println!("Error: file path is invalid.");
+	}
 }
 
