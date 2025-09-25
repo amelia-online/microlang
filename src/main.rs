@@ -80,12 +80,19 @@ impl Lexer {
 		let start = self.now();
 		let mut number = String::new();
 
-		while self.digits.contains(self.get()) && self.index < self.input.len() {
+		while self.index < self.input.len() {
+			
+			if !self.digits.contains(self.get()) {
+				break;
+			}
+
+			//println!("{}", self.get());
+			
 			number.push(self.get());
 			self.inc();
 		}
-
-		Token::new(TokenType::Number(number),self.line, start, self.now())
+		//println!("just lexed: {}", &number);
+		Token::new(TokenType::Number(number),self.line, start, self.now()-1)
 	}
 
 	pub fn lex(&mut self) -> Vec<Token> {
@@ -94,7 +101,9 @@ impl Lexer {
 		
 		let mut result: Vec<Token> = Vec::new();
 		while self.index < length {
-			let ch = self.input[self.index];
+			let ch = self.get();
+			//println!("{ch}");
+
 
 			if ch == ' ' {
 				self.inc();
