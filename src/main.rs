@@ -1,5 +1,4 @@
-use std::io::{Read, Write};
-use std::env::Args;
+use std::io::{Read};
 
 
 #[derive(Debug)]
@@ -22,6 +21,9 @@ pub enum TokenType {
 	Semicolon,
 	Dot,
 	Tilda,
+	Let,
+	Const,
+	Ret,
 	Ident(String)
 }
 
@@ -51,6 +53,7 @@ pub struct Lexer {
 	pub digits: String,
 	pub singles: String,
 	pub ident_start: String,
+	pub operator_start: String,
 }	
 
 impl Lexer {
@@ -62,6 +65,7 @@ impl Lexer {
 			digits: String::from("0123456789"),
 			singles: String::from("[]{}():?,|;.~"),
 			ident_start: String::from("_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+			operator_start: String::from("+=-*/%<>^&!"),
 		}
 	} 
 
@@ -77,6 +81,10 @@ impl Lexer {
 		self.input[self.index]
 	}
 
+	pub fn has_next(&self) -> bool {
+		self.index + 1 < self.input.len()
+	}
+
 	pub fn get_at(&self, idx: usize) -> Result<char, ()> {
 		if idx < self.input.len()-1 {
 			Ok(self.input[idx])
@@ -85,8 +93,48 @@ impl Lexer {
 		}
 	}
 
-	pub fn lex_ident_or_keyword(&mut self) -> Token {
-		todo!()
+	pub fn peek(&self) -> Option<char> {
+		if self.has_next() {
+			Some(self.input[self.index + 1])
+		} else {
+			None
+		}
+	}
+
+	pub fn lex_keyword_or_ident(&mut self) -> Token {
+
+		use TokenType::*;
+		let start = self.now();
+		let mut valid: String = String::new();
+		valid.push_str(&self.digits);
+		valid.push_str(&self.ident_start);
+
+		//println!("{valid}");
+
+		let mut value = String::new();
+
+		while self.index < self.input.len() {
+
+			if !valid.contains(self.get()) {
+				break;
+			}
+
+			value.push(self.get());
+			self.inc();
+		}
+
+		let tt = match value.as_str() {
+			"let" => Let,
+			"const" => Const,
+			"ret" => Ret,
+			"end" => End,
+			"lor" => Operator("lor".to_string()),
+			"or" => Operator("or".to_string()),
+			_ => Ident(value),
+		};
+
+		Token::new(tt, self.line, start, self.now())
+
 	}
 
 	pub fn lex_number(&mut self) -> Token {
@@ -106,6 +154,65 @@ impl Lexer {
 		}
 		//println!("just lexed: {}", &number);
 		Token::new(TokenType::Number(number),self.line, start, self.now())
+	}
+
+	pub fn lex_string(&mut self) -> Token {
+		let mut result = String::new();
+		let start = self.now();
+
+		let mut q_count = 0;
+
+
+		while self.has_next() {
+
+			match self.get() {
+				'`' => q_count += 1,
+				'\'' => q_count -= 1,
+				'\n' => panic!(),
+				_ => (),
+			}
+
+			result.push(self.get());
+
+			self.inc();
+
+			if q_count == 0 {
+				break;
+			}
+		}
+
+		Token::new(TokenType::Str(result), self.line,start, self.now())
+	}
+
+	pub fn lex_operator(&mut self) -> Token {
+		let acceptable = vec!["+", "-", "/", "*",
+												 "=", "%", ">", "<",
+												 "+=", "-=", "*=", "/=",
+												 "&=", "|=", "^=", ">=",
+												 "<=", ">>=", "<<=", ">>",
+												 "<<", "&", "^", "==", "%=",
+												 "!=", "!", "&&", "**"];
+
+		let mut result = String::new();
+
+		let start = self.now();
+
+		while self.has_next() {
+
+			if !self.operator_start.contains(self.get()) {
+				break;
+			}
+
+			result.push(self.get());
+			self.inc();
+		}
+
+		if !acceptable.contains(&result.as_str()) {
+			panic!("{}", format!("Error: unrecognized operator: {}", &result.as_str()));
+		}
+
+		Token::new(TokenType::Operator(result), self.line, start, self.now())
+		
 	}
 
 	pub fn lex(&mut self) -> Vec<Token> {
@@ -154,6 +261,25 @@ impl Lexer {
 				);
 				self.inc();
 				result.push(token);
+			} else if self.ident_start.contains(ch) {
+				result.push(self.lex_keyword_or_ident());
+			} else if self.operator_start.contains(ch) {
+				
+				// Sorry for this.
+				if ch == '/' {
+					if let Some(n) = self.peek() {
+						if n == '/' {
+							while self.index < self.input.len() && self.get() != '\n' {
+								self.inc();
+							}
+							continue;
+						}
+					}
+				}
+
+				result.push(self.lex_operator());
+			} else if ch == '`' {
+				result.push(self.lex_string());
 			}
 		}
 		result
