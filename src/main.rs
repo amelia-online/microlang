@@ -16,7 +16,13 @@ pub enum TokenType {
 	LSquare,
 	RSquare,
 	LCurly,
-	RCurly
+	RCurly,
+	Comma,
+	Colon,
+	Semicolon,
+	Dot,
+	Tilda,
+	Ident(String)
 }
 
 #[derive(Debug)]
@@ -43,7 +49,8 @@ pub struct Lexer {
 	pub index: usize,
 	pub line: i32,
 	pub digits: String,
-
+	pub singles: String,
+	pub ident_start: String,
 }	
 
 impl Lexer {
@@ -53,6 +60,8 @@ impl Lexer {
 			index: 0,
 			line: 1,
 			digits: String::from("0123456789"),
+			singles: String::from("[]{}():?,|;.~"),
+			ident_start: String::from("_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 		}
 	} 
 
@@ -76,6 +85,10 @@ impl Lexer {
 		}
 	}
 
+	pub fn lex_ident_or_keyword(&mut self) -> Token {
+		todo!()
+	}
+
 	pub fn lex_number(&mut self) -> Token {
 		let start = self.now();
 		let mut number = String::new();
@@ -92,7 +105,7 @@ impl Lexer {
 			self.inc();
 		}
 		//println!("just lexed: {}", &number);
-		Token::new(TokenType::Number(number),self.line, start, self.now()-1)
+		Token::new(TokenType::Number(number),self.line, start, self.now())
 	}
 
 	pub fn lex(&mut self) -> Vec<Token> {
@@ -116,7 +129,32 @@ impl Lexer {
 				self.line += 1;
 			} else if self.digits.contains(ch) {
 				result.push(self.lex_number());
-			} 
+			} else if self.singles.contains(ch) {
+				let tt = match ch {
+					']' => RSquare,
+					'[' => LSquare,
+					'|' => Bar,
+					'(' => LParen,
+					')' => RParen,
+					'{' => LCurly,
+					'}' => RCurly,
+					',' => Comma,
+					'?' => Question,
+					':' => Colon,
+					';' => Semicolon,
+					'.' => Dot,
+					'~' => Tilda,
+					_ => unreachable!(),
+				};
+				let token = Token::new(
+						tt,
+						self.line,
+						self.now(),
+						self.now() + 1
+				);
+				self.inc();
+				result.push(token);
+			}
 		}
 		result
 	}
