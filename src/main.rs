@@ -1,4 +1,5 @@
-use std::io::{Read};
+use std::{io::Read, process::exit};
+use regex::Regex;
 
 
 #[derive(Debug)]
@@ -101,6 +102,11 @@ impl Lexer {
 		}
 	}
 
+	pub fn lex_error(&self, msg: &str) {
+		println!("Error: Line {}: {}", self.line, msg);
+		exit(1)
+	}
+
 	pub fn lex_keyword_or_ident(&mut self) -> Token {
 
 		use TokenType::*;
@@ -140,10 +146,15 @@ impl Lexer {
 	pub fn lex_number(&mut self) -> Token {
 		let start = self.now();
 		let mut number = String::new();
+		let mut valid = String::new();
+		valid.push_str(&self.digits);
+		valid.push_str(".xabcdefABCDEF");
+		let valid_float = Regex::new(r"^[0-9]+\.[0-9]+$").unwrap();
+		let valid_hex = Regex::new(r"^0x[0-9a-fA-F]+$").unwrap();
 
 		while self.index < self.input.len() {
 			
-			if !self.digits.contains(self.get()) {
+			if !valid.contains(self.get()) {
 				break;
 			}
 
@@ -152,6 +163,14 @@ impl Lexer {
 			number.push(self.get());
 			self.inc();
 		}
+
+		if number.contains(".") || number.contains("0x") {
+			if !valid_float.is_match(&number) && !valid_hex.is_match(&number) {
+				self.lex_error(format!("not a number: {}", number.as_str()).as_str());
+			}
+		}
+
+
 		//println!("just lexed: {}", &number);
 		Token::new(TokenType::Number(number),self.line, start, self.now())
 	}
@@ -168,7 +187,7 @@ impl Lexer {
 			match self.get() {
 				'`' => q_count += 1,
 				'\'' => q_count -= 1,
-				'\n' => panic!(),
+				'\n' => self.lex_error("newline encountered while lexing string!"),
 				_ => (),
 			}
 
@@ -208,7 +227,7 @@ impl Lexer {
 		}
 
 		if !acceptable.contains(&result.as_str()) {
-			panic!("{}", format!("Error: unrecognized operator: {}", &result.as_str()));
+			self.lex_error(format!("Error: unrecognized operator: {}", &result.as_str()).as_str());
 		}
 
 		Token::new(TokenType::Operator(result), self.line, start, self.now())
