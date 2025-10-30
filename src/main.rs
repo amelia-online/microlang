@@ -1,31 +1,81 @@
 use std::{io::Read, process::exit};
 use regex::Regex;
+mod micro;
 
 
 #[derive(Debug)]
 pub enum TokenType {
-	Number(String),
-	Str(String),
-	Newline,
-	Question,
-	Operator(String),
-	Bar,
-	End,
-	LParen,
-	RParen,
-	LSquare,
-	RSquare,
-	LCurly,
-	RCurly,
-	Comma,
-	Colon,
-	Semicolon,
-	Dot,
-	Tilda,
-	Let,
-	Const,
-	Ret,
-	Ident(String)
+    Number(String),
+    Str(String),
+    Newline,
+    Question,
+    Operator(String),
+    Bar,
+    End,
+    LParen,
+    RParen,
+    LSquare,
+    RSquare,
+    LCurly,
+    RCurly,
+    Comma,
+    Colon,
+    Semicolon,
+    Dot,
+    Tilda,
+    Let,
+    Const,
+    Ret,
+    While,
+    Do,
+    For,
+    Type,
+    Namesp,
+    Include,
+    Match,
+    True,
+    False,
+    Ident(String)
+}
+
+impl TokenType {
+    pub fn name(&self) -> String {
+	use TokenType::*;
+	match self {
+	    Number(n) => format!("number({})", n),
+	    Str(s) => format!("str({})", s),
+	    Newline => "newline".to_string(),
+	    Question => "?".to_string(),
+	    Operator(op) => format!("operator({})", op),
+	    Bar => "|".to_string(),
+	    End => "end".to_string(),
+	    LParen => "(".to_string(),
+	    RParen => ")".to_string(),
+	    LSquare => "[".to_string(),
+	    RSquare => "]".to_string(),
+	    LCurly => "{".to_string(),
+	    RCurly => "}".to_string(),
+	    Comma => ",".to_string(),
+	    Colon => ":".to_string(),
+	    Semicolon => ";".to_string(),
+	    Dot => ".".to_string(),
+	    Tilda => "~".to_string(),
+	    Let => "let".to_string(),
+	    Const => "const".to_string(),
+	    Ret => "ret".to_string(),
+	    While => "while".to_string(),
+	    Do => "do".to_string(),
+	    For => "for".to_string(),
+	    Type => "type".to_string(),
+	    Namesp => "ns".to_string(),
+	    Include => "include".to_string(),
+	    Match => "match".to_string(),
+	    True => "true".to_string(),
+	    False => "false".to_string(),
+	    Ident(i) => format!("identifier({})", i),
+	    _ => unreachable!(),
+	}
+    }
 }
 
 #[derive(Debug)]
@@ -136,6 +186,15 @@ impl Lexer {
 			"end" => End,
 			"lor" => Operator("lor".to_string()),
 			"or" => Operator("or".to_string()),
+			"while" => While,
+			"for" => For,
+			"do" => Do,
+			"type" => Type,
+			"ns" => Namesp,
+			"include" => Include,
+			"match" => Match,
+			"true" => True,
+			"false" => False,
 			_ => Ident(value),
 		};
 
@@ -278,27 +337,28 @@ impl Lexer {
 						self.now(),
 						self.now() + 1
 				);
-				self.inc();
-				result.push(token);
+			    self.inc();
+			    result.push(token);
 			} else if self.ident_start.contains(ch) {
-				result.push(self.lex_keyword_or_ident());
+			    result.push(self.lex_keyword_or_ident());
 			} else if self.operator_start.contains(ch) {
 				
-				// Sorry for this.
-				if ch == '/' {
-					if let Some(n) = self.peek() {
-						if n == '/' {
-							while self.index < self.input.len() && self.get() != '\n' {
-								self.inc();
-							}
-							continue;
-						}
+			    // Sorry for this.
+			    // This is checking for comments. If it's a comment, skip the line.
+			    if ch == '/' {
+				if let Some(n) = self.peek() {
+				    if n == '/' {
+					while self.index < self.input.len() && self.get() != '\n' {
+					    self.inc();
 					}
+					continue;
+				    }
 				}
+			    }
 
-				result.push(self.lex_operator());
+			    result.push(self.lex_operator());
 			} else if ch == '`' {
-				result.push(self.lex_string());
+			    result.push(self.lex_string());
 			}
 		}
 		result

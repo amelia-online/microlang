@@ -11,11 +11,19 @@ Strings:
 `Strings look like this'
 Escapes: \n \t \' \` (for now)
 
+Expression:
+    - Fn call
+    - Number
+    - String
+    - Arithmetic
+    - Array index
+    - ...
+
 If statement (?):
 
-1 < 2 ? 
-| `yes'
-| `no'
+? 1 < 2 
+| `yes' // then
+| `no'  // else
 end
 
 Operators:
@@ -24,4 +32,28 @@ Operators:
 Bitwise:
 &, |, !
 
+Assignment:
 
+let <n> = <v>;
+let <n>: <type> = <v>;
+
+Functions:
+
+~<name>(<param>: <type>, ...) <type> {
+    <statements>
+}
+
+Polymorphic Types:
+
+type <T>
+| <A> {<n1>: <t1>, ...}
+| <B> {...}
+end
+
+let a = T::A{1, 2};
+match a
+| A{n1, n2}:
+    <statements>
+| B{}:
+    <statements>
+end
