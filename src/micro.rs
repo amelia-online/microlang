@@ -12,6 +12,12 @@ pub mod parser {
 	U32,
 	I64,
 	U64,
+	Str,
+	F32,
+	F64,
+	Bool,
+	List(Box<BuiltinType>),
+	Struct(String)
     }
 
     #[derive(Debug)]
